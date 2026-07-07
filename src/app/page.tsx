@@ -1,7 +1,11 @@
+"use client";
+
 import { Zap } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
-const magazines = [
+// Fallback data while loading or if app is disconnected
+const fallbackMagazines = [
   {
     id: "m1",
     title: "The Agentic Shift",
@@ -9,26 +13,39 @@ const magazines = [
     category: "Agentic Frontier",
     date: "July 6, 2026",
     image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800",
-  },
-  {
-    id: "m2",
-    title: "Base Blueprints",
-    description: "Deep dive into the latest developer grants and infra upgrades.",
-    category: "Builder Pulse",
-    date: "July 5, 2026",
-    image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&q=80&w=800",
-  },
-  {
-    id: "m3",
-    title: "Liquidity Leakage",
-    description: "Tracking the $85M USDC inflow from Ethereum mainnet.",
-    category: "Market Intel",
-    date: "July 4, 2026",
-    image: "https://images.unsplash.com/photo-1642104704074-907c0698cbd9?auto=format&fit=crop&q=80&w=800",
   }
 ];
 
 export default function LandingPage() {
+  const [magazines, setMagazines] = useState(fallbackMagazines);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Wait for bankr sdk to be ready if in iframe
+        if (typeof window !== "undefined" && (window as any).bankr) {
+          const bankr = (window as any).bankr;
+          bankr.on("ready", async () => {
+            const data = await bankr.appKV.get("daily_edition_latest");
+            if (data && data.magazines) {
+              setMagazines(data.magazines);
+            }
+            setLoading(false);
+          });
+        } else {
+          // If outside iframe, we could fetch via public API if needed
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Failed to load magazine data:", err);
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-accent selection:text-white">
       <header className="relative overflow-hidden border-b border-white/10 py-24 lg:py-32">
@@ -65,6 +82,7 @@ export default function LandingPage() {
             <h2 className="text-sm font-bold text-accent uppercase tracking-[0.2em] mb-2">Weekly Editions</h2>
             <p className="text-3xl font-bold tracking-tight">THE MAGAZINE RACK</p>
           </div>
+          {loading && <div className="text-xs font-mono animate-pulse text-accent">SYNCING INTEL...</div>}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
